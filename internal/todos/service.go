@@ -84,6 +84,21 @@ func (s *Service) Update(id int, title string, completed bool) (Todo, error) {
 	return todo, nil
 }
 
+func (s *Service) Delete(id int) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	_, ok := s.todos[id]
+
+	if !ok {
+		return ErrNotFound
+	}
+
+	delete(s.todos, id)
+
+	return nil
+}
+
 func NewService() *Service {
 	return &Service{
 		todos:  make(map[int]Todo),

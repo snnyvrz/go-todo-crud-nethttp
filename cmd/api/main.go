@@ -47,7 +47,7 @@ func (app *application) getTodoByIDHandler(w http.ResponseWriter, r *http.Reques
 
 	id, err := strconv.Atoi(idStr)
 
-	if err != nil || id < 0 {
+	if err != nil || id <= 0 {
 		http.Error(w, "invalid id", http.StatusBadRequest)
 		return
 	}
@@ -110,7 +110,7 @@ func (app *application) updateTodoHandler(w http.ResponseWriter, r *http.Request
 
 	id, err := strconv.Atoi(idStr)
 
-	if err != nil || id < 0 {
+	if err != nil || id <= 0 {
 		http.Error(w, "invalid id", http.StatusBadRequest)
 		return
 	}
@@ -138,6 +138,36 @@ func (app *application) updateTodoHandler(w http.ResponseWriter, r *http.Request
 	json.NewEncoder(w).Encode(updated)
 }
 
+func (app *application) deleteTodoHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodDelete {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	path := r.URL.Path
+	idStr := strings.TrimPrefix(path, "/todos/")
+	id, err := strconv.Atoi(idStr)
+
+	if err != nil || id <= 0 {
+		http.Error(w, "invalid id", http.StatusBadRequest)
+		return
+	}
+
+	err = app.todoService.Delete(id)
+
+	if err != nil {
+		if errors.Is(err, todos.ErrNotFound) {
+			http.Error(w, "todo not found", http.StatusNotFound)
+			return
+		}
+
+		http.Error(w, "failed to delete todo", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
 func main() {
 	app := &application{
 		todoService: todos.NewService(),
@@ -163,6 +193,8 @@ func main() {
 			app.getTodoByIDHandler(w, r)
 		case http.MethodPut:
 			app.updateTodoHandler(w, r)
+		case http.MethodDelete:
+			app.deleteTodoHandler(w, r)
 		default:
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		}
