@@ -8,6 +8,16 @@ type Service struct {
 	nextID int
 }
 
+func (s *Service) List() ([]Todo, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	items := make([]Todo, 0, len(s.todos))
+	for _, todo := range s.todos {
+		items = append(items, todo)
+	}
+	return items, nil
+}
+
 func NewService() *Service {
 	return &Service{
 		todos:  make(map[int]Todo),
