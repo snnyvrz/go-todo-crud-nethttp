@@ -11,14 +11,32 @@ type Service struct {
 	nextID int
 }
 
+var ErrNotFound = errors.New("todo not found")
+
 func (s *Service) List() ([]Todo, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
 	items := make([]Todo, 0, len(s.todos))
+
 	for _, todo := range s.todos {
 		items = append(items, todo)
 	}
+
 	return items, nil
+}
+
+func (s *Service) Get(id int) (Todo, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	todo, ok := s.todos[id]
+
+	if !ok {
+		return Todo{}, ErrNotFound
+	}
+
+	return todo, nil
 }
 
 func (s *Service) Create(title string, completed bool) (Todo, error) {

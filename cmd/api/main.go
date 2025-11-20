@@ -2,8 +2,11 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"log"
 	"net/http"
+	"strconv"
+	"strings"
 
 	"github.com/snnyvrz/go-todo-crud-nethttp/internal/todos"
 )
@@ -31,6 +34,38 @@ func (app *application) listTodoHandler(w http.ResponseWriter, r *http.Request) 
 		http.Error(w, "failed to encode response", http.StatusInternalServerError)
 		return
 	}
+}
+
+func (app *application) getTodoByIDHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	path := r.URL.Path
+	idStr := strings.TrimPrefix(path, "/todos/")
+
+	id, err := strconv.Atoi(idStr)
+
+	if err != nil || id < 0 {
+		http.Error(w, "invalid id", http.StatusBadRequest)
+		return
+	}
+
+	todo, err := app.todoService.Get(id)
+
+	if err != nil {
+		if errors.Is(err, todos.ErrNotFound) {
+			http.Error(w, "todo not found", http.StatusNotFound)
+			return
+		}
+
+		http.Error(w, "failed to get todo", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(todo)
 }
 
 func (app *application) createTodoHandler(w http.ResponseWriter, r *http.Request) {
@@ -83,6 +118,7 @@ func main() {
 
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 	})
+	mux.HandleFunc("/todos/", app.getTodoByIDHandler)
 
 	log.Println("Server listening on :8080")
 	if err := http.ListenAndServe(":8080", mux); err != nil {
