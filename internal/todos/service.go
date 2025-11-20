@@ -1,6 +1,9 @@
 package todos
 
-import "sync"
+import (
+	"errors"
+	"sync"
+)
 
 type Service struct {
 	mu     sync.Mutex
@@ -16,6 +19,29 @@ func (s *Service) List() ([]Todo, error) {
 		items = append(items, todo)
 	}
 	return items, nil
+}
+
+func (s *Service) Create(title string, completed bool) (Todo, error) {
+	if title == "" {
+		return Todo{}, errors.New("title cannot be empty")
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	id := s.nextID
+
+	todo := Todo{
+		ID:        id,
+		Title:     title,
+		Completed: completed,
+	}
+
+	s.todos[id] = todo
+
+	s.nextID++
+
+	return todo, nil
 }
 
 func NewService() *Service {
