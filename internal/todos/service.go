@@ -62,6 +62,28 @@ func (s *Service) Create(title string, completed bool) (Todo, error) {
 	return todo, nil
 }
 
+func (s *Service) Update(id int, title string, completed bool) (Todo, error) {
+	if title == "" {
+		return Todo{}, errors.New("title cannot be empty")
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	todo, ok := s.todos[id]
+
+	if !ok {
+		return Todo{}, ErrNotFound
+	}
+
+	todo.Title = title
+	todo.Completed = completed
+
+	s.todos[id] = todo
+
+	return todo, nil
+}
+
 func NewService() *Service {
 	return &Service{
 		todos:  make(map[int]Todo),
