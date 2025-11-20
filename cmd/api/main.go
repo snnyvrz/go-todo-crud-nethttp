@@ -33,13 +33,56 @@ func (app *application) listTodoHandler(w http.ResponseWriter, r *http.Request) 
 	}
 }
 
+func (app *application) createTodoHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var input todos.CreateTodoRequest
+
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		http.Error(w, "invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	if input.Title == "" {
+		http.Error(w, "title cannot be empty", http.StatusBadRequest)
+		return
+	}
+
+	todo, err := app.todoService.Create(input.Title, input.Completed)
+
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+
+	json.NewEncoder(w).Encode(todo)
+}
+
 func main() {
 	app := &application{
 		todoService: todos.NewService(),
 	}
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("/todos", app.listTodoHandler)
+	mux.HandleFunc("/todos", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet {
+			app.listTodoHandler(w, r)
+			return
+		}
+
+		if r.Method == http.MethodPost {
+			app.createTodoHandler(w, r)
+			return
+		}
+
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+	})
 
 	log.Println("Server listening on :8080")
 	if err := http.ListenAndServe(":8080", mux); err != nil {
